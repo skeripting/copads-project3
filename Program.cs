@@ -59,6 +59,12 @@ class Program {
 }
 
     public static void RunKeystream(string[] args) {
+        if (args.Length != 4) {
+            Console.WriteLine("Error in the length of your arguments.");
+            DisplayHelp();
+            return; 
+        }
+
         string seedString = args[1];
         int seedLength = seedString.Length;
         int tap, step; 
@@ -99,22 +105,78 @@ class Program {
             keyStream += newBit;
         }
 
+        String keyStreamPath = Path.Combine(Directory.GetCurrentDirectory(), "keystream.txt");
+
+        using (StreamWriter outputFile = new StreamWriter(keyStreamPath)) {
+            outputFile.Write(keyStream);
+        }
+
         Console.WriteLine("The Keystream: " + keyStream);
+
+        // Save the keystream
+
+    }
+
+    public static void RunEncrypt(string[] args) {
+        string plaintext = args[0];
+
+        byte[] plainTextBytes = BinaryStringToBytes(plaintext);
+
+        string keyStream; 
+        string keyStreamFile = Path.Combine(Directory.GetCurrentDirectory(), "keystream.txt");
+
+        if (!File.Exists(keyStreamFile)) {
+            Console.WriteLine("The file " + keyStreamFile + " doesn't exist. Try to run the runkeystream command before using this command first.");
+            DisplayHelp();
+        }
+
+        using (StreamReader inputFile = new StreamReader(keyStreamFile)) {
+            keyStream = inputFile.ReadLine();
+        }
+
+        if (keyStream == null || keyStream.Length == 0) {
+            Console.WriteLine("An error occurred and the keystream being read was null. Try to run the runkeystream command before using this command first.");
+            DisplayHelp();
+            return;
+        }
+
+        // The keystream may not have the same number of bytes as the plain text
+        // So, we need to prepend 0s. 
+
+        int nBytesInPlainText = plainTextBytes.Length;
+        int nBytesInKeystream = (keyStream.Length / 8) + 1;
+
+        if (nBytesInKeystream < nBytesInPlainText) {
+            Console.WriteLine("Keystream");
+            Console.WriteLine(keyStream);
+            Console.WriteLine("Plain Text: " + plaintext);
+            Console.WriteLine("Number of bytes in Keystream: ");
+            Console.WriteLine(nBytesInKeystream);
+            Console.WriteLine("Number of bytes in plain text");
+            Console.WriteLine(nBytesInPlainText);
+        }
+
+        byte[] keystreamBytes = BinaryStringToBytes(keyStream);
+
+        for (int byteIndex = 0; byteIndex < plainTextBytes.Length; byteIndex++) {
+            plainTextBytes[byteIndex] ^= (byte)keystreamBytes[byteIndex];
+        }
+
 
     }
 
     public static void RunCipher(string[] args) {
-        string seedString = args[1];
-        byte[] seedBytes = BinaryStringToBytes(seedString);
-        int seedLength = seedString.Length;
-
-        int tap = 0; 
-
         if (args.Length != 3) {
             Console.WriteLine("Error in the length of your arguments.");
             DisplayHelp();
             return; 
         }
+
+        string seedString = args[1];
+        byte[] seedBytes = BinaryStringToBytes(seedString);
+        int seedLength = seedString.Length;
+
+        int tap;
 
         try { 
             tap = Convert.ToInt32(args[2]);
