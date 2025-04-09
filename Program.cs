@@ -18,7 +18,7 @@ class Program {
         return bytes;
     }
 
-    public static void SimulateOneStepLFSR(byte[] seed, int tap) {
+    public static byte[] SimulateOneStepLFSR(byte[] seed, int tap) {
         byte leftmostBit = (byte)((seed[0] & MSB_BYTE_MASK) >> 7);
 
         int numTotalBits = 8 * seed.Length;  // 8 bits times number of bytes
@@ -49,11 +49,54 @@ class Program {
             Console.Write(ByteToString(b));
         }
 
+        Console.Write(" " + newBit);
+
         Console.WriteLine();
+
+        return seed; 
 }
 
+    public static void RunKeystream(string[] args) {
+        string seedString = args[1];
+        byte[] seedBytes = BinaryStringToBytes(seedString);
+
+        int seedLength = seedString.Length;
+        int tap, step; 
+
+        try { 
+            tap = Convert.ToInt32(args[2]);
+        }
+        catch {
+            Console.WriteLine("Error in converting the tap to an integer.");
+            DisplayHelp();
+            return;
+        }
+
+        try { 
+            step = Convert.ToInt32(args[3]);
+        }
+        catch {
+            Console.WriteLine("Error in converting the tap to an integer.");
+            DisplayHelp();
+            return;
+        }
+
+        if (tap < 1 || tap > seedLength) {
+            Console.WriteLine("The tap must be within [1.." + seedLength + "]");
+            DisplayHelp();
+            return;
+        }
+
+        Console.WriteLine(seedString + " - seed");
+
+        byte[] seedBytes = BinaryStringToBytes(seedString);
+
+        for (int i = 0; i < step; i++) {
+            seedBytes = SimulateOneStepLFSR(seedBytes, tap);
+        }
+    }
+
     public static void RunCipher(string[] args) {
-        int seedInt = Convert.ToInt32(args[1], 2);
         string seedString = args[1];
         byte[] seedBytes = BinaryStringToBytes(seedString);
         int seedLength = seedString.Length;
@@ -62,6 +105,7 @@ class Program {
 
         if (args.Length != 3) {
             Console.WriteLine("Error in the length of your arguments.");
+            DisplayHelp();
             return; 
         }
 
@@ -70,25 +114,46 @@ class Program {
         }
         catch {
             Console.WriteLine("Error in converting the tap to an integer.");
+            DisplayHelp();
             return;
         }
 
         if (tap < 1 || tap > seedLength) {
             Console.WriteLine("The tap must be within [1.." + seedLength + "]");
+            DisplayHelp();
+            return;
         }
         
         Console.WriteLine(seedString + " - seed");
 
         SimulateOneStepLFSR(seedBytes, tap);
+    }
 
+    public static void DisplayHelp() {
+        Console.WriteLine(" == Commands: == ");
+        Console.WriteLine(" [+] dotnet run cipher <seed> <tap> - Takes an initial seed and tap position and simulates one step of the LFSR cipher.");
+        Console.WriteLine(" [+] dotnet run generatekeystream <seed> <tap> <step> - This option will accept a seed, tap position, and the number of steps, n, which is a positive integer. For each step, the LFSR cipher simulation prints the new seed and the rightmost bit.");
+        Console.WriteLine(" [+] dotnet run encrypt <plaintext> - This option will accept plaintext in bits; perform an XOR operation of the plaintext with the saved “keystream”; and return a set of encrypted bits (ciphertext).");
+        Console.WriteLine(" [+] dotnet run decrypt <ciphertext> - This option will accept ciphertext in bits; perform an XOR operation with the retrieved keystream from the file; and return a set of decrypted bits (plaintext)");
+        Console.WriteLine(" [+] dotnet run triplebit <seed> <tap> <step> <iteration> - This option will accept an initial seed, tap, step - a positive integer p and perform p steps of the LFSR cipher simulation. It will also accept iteration- a positive integer w. After each iteration i (0 <= i < w), it returns a new seed, and accumulated integer value.");
+        Console.WriteLine(" [+] dotnet run encryptimage <imagefile> <seed> <tap> - Given an image with a seed and tap position, this command will generate a row encrypted version of that image.");
+        Console.WriteLine(" [+] dotnet run decryptimage <imagefile> <seed> <tap> - Given an encrypted image, a seed and tap position, this command will generate the original image and save it with a different name in the same directory. The image will be named File_NameNEW.");
     }
 
     public static void Main(string[] args) {
+        if (args.Length == 0) {
+            Console.WriteLine("Invalid number of arguments!");
+            DisplayHelp();
+            return; 
+        }
+
         string option = args[0];
 
         if (option == "cipher") {
             RunCipher(args);
         }
-
+        else if (option == "generatekeystream") {
+            RunKeystream(args);
+        }
     }
 }
