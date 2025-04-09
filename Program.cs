@@ -18,7 +18,9 @@ class Program {
         return bytes;
     }
 
-    public static byte[] SimulateOneStepLFSR(byte[] seed, int tap) {
+    // Performs one step of the LFSR function 
+    // Returns the new seed and the new bit as a tuple after execution 
+    public static (byte[], int) SimulateOneStepLFSR(byte[] seed, int tap) {
         byte leftmostBit = (byte)((seed[0] & MSB_BYTE_MASK) >> 7);
 
         int numTotalBits = 8 * seed.Length;  // 8 bits times number of bytes
@@ -53,13 +55,11 @@ class Program {
 
         Console.WriteLine();
 
-        return seed; 
+        return (seed, newBit); 
 }
 
     public static void RunKeystream(string[] args) {
         string seedString = args[1];
-        byte[] seedBytes = BinaryStringToBytes(seedString);
-
         int seedLength = seedString.Length;
         int tap, step; 
 
@@ -90,10 +90,17 @@ class Program {
         Console.WriteLine(seedString + " - seed");
 
         byte[] seedBytes = BinaryStringToBytes(seedString);
+        string keyStream = "";
 
         for (int i = 0; i < step; i++) {
-            seedBytes = SimulateOneStepLFSR(seedBytes, tap);
+            var (newSeed, newBit) = SimulateOneStepLFSR(seedBytes, tap);
+
+            seedBytes = newSeed;
+            keyStream += newBit;
         }
+
+        Console.WriteLine("The Keystream: " + keyStream);
+
     }
 
     public static void RunCipher(string[] args) {
