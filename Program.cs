@@ -132,8 +132,6 @@ class Program {
 
         Console.WriteLine("The Keystream: " + keyStream);
 
-        // Save the keystream
-
     }
 
     public static void RunEncrypt(string[] args) {
@@ -199,6 +197,76 @@ class Program {
         Console.WriteLine(newCipherText);
     }
 
+
+    public static void RunDecrypt(string[] args) {
+        string ciphertext = args[1];
+
+        string keyStream;
+        string keyStreamFile = Path.Combine(Directory.GetCurrentDirectory(), "keystream.txt");
+
+        if (!File.Exists(keyStreamFile)) {
+            Console.WriteLine("The file " + keyStreamFile + " doesn't exist. Try running 'generatekeystream'");
+            DisplayHelp();
+            return;
+        }
+
+        using (StreamReader inputFile = new StreamReader(keyStreamFile)) {
+            keyStream = inputFile.ReadLine();
+        }
+
+        if (keyStream == null || keyStream.Length == 0) {
+            Console.WriteLine("Keystream read as null or empty. Try running 'generatekeystream'");
+            DisplayHelp();
+            return;
+        }
+
+        // at this point the arrays may not be the same length 
+        // so i padded them
+
+        while (keyStream.Length < ciphertext.Length) {
+            keyStream = "0" + keyStream;
+        }
+
+        while (ciphertext.Length < keyStream.Length) {
+            ciphertext = "0" + ciphertext;
+        }
+
+        byte[] keystreamBytes = BinaryStringToBytes(keyStream);
+        byte[] cipherTextBytes = BinaryStringToBytes(ciphertext);
+
+        // cipher text bytes should be same size as keystream bytes now
+        byte[] plainTextBytes = new byte[keystreamBytes.Length]; 
+
+        /*Console.WriteLine("Keystream: " + keyStream);
+        Console.WriteLine("Cipher Text: " + ciphertext);
+        Console.WriteLine("Number of bytes in Keystream: " + keystreamBytes.Length);
+        Console.WriteLine("Number of bytes in Cipher Text: " + cipherTextBytes.Length);*/
+
+        // now finally they should be the same length *rolls eyes*; xor 
+
+
+        // plain text = C_i XOR k_i
+
+        for (int i = 0; i < keystreamBytes.Length; i++) {
+            plainTextBytes[i] = (byte)(cipherTextBytes[i] ^ keystreamBytes[i]);
+        }
+
+        string newPlainText = "";
+
+        Console.Write("The plain text is: ");
+        for (int i = 0; i < plainTextBytes.Length; i++) {
+            newPlainText += ByteToString(plainTextBytes[i]);
+        }
+
+        // at this point, the bytetostring function has added leading zeroes 
+
+        newPlainText = newPlainText.TrimStart('0');
+
+        // 0s removed 
+
+        Console.WriteLine(newPlainText);
+    }
+
     public static void RunCipher(string[] args) {
         if (args.Length != 3) {
             Console.WriteLine("Error in the length of your arguments.");
@@ -260,6 +328,9 @@ class Program {
         }
         else if (option == "encrypt") {
             RunEncrypt(args);
+        }
+        else if (option == "decrypt") {
+            RunDecrypt(args);
         }
         else {
             Console.WriteLine("Invalid Command!");
