@@ -6,11 +6,30 @@ class Program {
         return Convert.ToString(b, 2).PadLeft(8, '0');
     }
 
-    public static byte[] BinaryStringToBytes(string binary) {
+    public static string BytesToBinaryString(byte[] bytes)
+    {
+        StringBuilder binaryString = new StringBuilder();
+
+        foreach (byte b in bytes)
+        {
+            binaryString.Append(Convert.ToString(b, 2).PadLeft(8, '0'));
+        }
+
+        return binaryString.ToString();
+    }
+    public static byte[] BinaryStringToBytes(string binary)
+    {
+        int remainder = binary.Length % 8;
+        if (remainder != 0)
+        {
+            binary = binary.PadLeft(binary.Length + (8 - remainder), '0');
+        }
+
         int numBytes = binary.Length / 8;
         byte[] bytes = new byte[numBytes];
-        
-        for (int i = 0; i < numBytes; i++) {
+
+        for (int i = 0; i < numBytes; i++)
+        {
             string byteString = binary.Substring(i * 8, 8);
             bytes[i] = Convert.ToByte(byteString, 2);
         }
@@ -105,7 +124,7 @@ class Program {
             keyStream += newBit;
         }
 
-        String keyStreamPath = Path.Combine(Directory.GetCurrentDirectory(), "keystream.txt");
+        string keyStreamPath = Path.Combine(Directory.GetCurrentDirectory(), "keystream.txt");
 
         using (StreamWriter outputFile = new StreamWriter(keyStreamPath)) {
             outputFile.Write(keyStream);
@@ -118,16 +137,15 @@ class Program {
     }
 
     public static void RunEncrypt(string[] args) {
-        string plaintext = args[0];
+        string plaintext = args[1];
 
-        byte[] plainTextBytes = BinaryStringToBytes(plaintext);
-
-        string keyStream; 
+        string keyStream;
         string keyStreamFile = Path.Combine(Directory.GetCurrentDirectory(), "keystream.txt");
 
         if (!File.Exists(keyStreamFile)) {
-            Console.WriteLine("The file " + keyStreamFile + " doesn't exist. Try to run the runkeystream command before using this command first.");
+            Console.WriteLine("The file " + keyStreamFile + " doesn't exist. Try running 'generatekeystream'");
             DisplayHelp();
+            return;
         }
 
         using (StreamReader inputFile = new StreamReader(keyStreamFile)) {
@@ -135,34 +153,50 @@ class Program {
         }
 
         if (keyStream == null || keyStream.Length == 0) {
-            Console.WriteLine("An error occurred and the keystream being read was null. Try to run the runkeystream command before using this command first.");
+            Console.WriteLine("Keystream read as null or empty. Try running 'generatekeystream'");
             DisplayHelp();
             return;
         }
 
-        // The keystream may not have the same number of bytes as the plain text
-        // So, we need to prepend 0s. 
+        // at this point the arrays may not be the same length 
+        // so i padded them
 
-        int nBytesInPlainText = plainTextBytes.Length;
-        int nBytesInKeystream = (keyStream.Length / 8) + 1;
+        while (keyStream.Length < plaintext.Length) {
+            keyStream = "0" + keyStream;
+        }
 
-        if (nBytesInKeystream < nBytesInPlainText) {
-            Console.WriteLine("Keystream");
-            Console.WriteLine(keyStream);
-            Console.WriteLine("Plain Text: " + plaintext);
-            Console.WriteLine("Number of bytes in Keystream: ");
-            Console.WriteLine(nBytesInKeystream);
-            Console.WriteLine("Number of bytes in plain text");
-            Console.WriteLine(nBytesInPlainText);
+        while (plaintext.Length < keyStream.Length) {
+            plaintext = "0" + plaintext;
         }
 
         byte[] keystreamBytes = BinaryStringToBytes(keyStream);
+        byte[] plainTextBytes = BinaryStringToBytes(plaintext);
 
-        for (int byteIndex = 0; byteIndex < plainTextBytes.Length; byteIndex++) {
-            plainTextBytes[byteIndex] ^= (byte)keystreamBytes[byteIndex];
+        /*Console.WriteLine("Keystream: " + BytesToBinaryString(keystreamBytes));
+        Console.WriteLine("Plain Text: " + BytesToBinaryString(plainTextBytes));
+        Console.WriteLine("Number of bytes in Keystream: " + keystreamBytes.Length);
+        Console.WriteLine("Number of bytes in Plain Text: " + plainTextBytes.Length);*/
+
+        // now finally they should be the same length *rolls eyes*; xor 
+
+        for (int i = 0; i < keystreamBytes.Length; i++) {
+            plainTextBytes[i] ^= keystreamBytes[i];
         }
 
+        string newCipherText = "";
 
+        Console.Write("The cipher text is: ");
+        for (int i = 0; i < plainTextBytes.Length; i++) {
+            newCipherText += ByteToString(plainTextBytes[i]);
+        }
+
+        // at this point, the bytetostring function has added leading zeroes 
+
+        newCipherText = newCipherText.TrimStart('0');
+
+        // 0s removed 
+
+        Console.WriteLine(newCipherText);
     }
 
     public static void RunCipher(string[] args) {
@@ -223,6 +257,14 @@ class Program {
         }
         else if (option == "generatekeystream") {
             RunKeystream(args);
+        }
+        else if (option == "encrypt") {
+            RunEncrypt(args);
+        }
+        else {
+            Console.WriteLine("Invalid Command!");
+            DisplayHelp();
+            return;
         }
     }
 }
