@@ -395,7 +395,7 @@ class Program {
         else if (option == "decrypt") {
             RunDecrypt(args);
         }
-        else if (option == "triplebit") {  // Added triplebit option for our new feature!
+        else if (option == "triplebit") {  
             RunTripleBit(args);
         }
         else {
