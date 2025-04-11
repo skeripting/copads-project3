@@ -39,7 +39,7 @@ class Program {
 
     // Performs one step of the LFSR function 
     // Returns the new seed and the new bit as a tuple after execution 
-    public static (byte[], int) SimulateOneStepLFSR(byte[] seed, int tap) {
+    public static (byte[], int) SimulateOneStepLFSR(byte[] seed, int tap, bool shouldWrite = true) {
         byte leftmostBit = (byte)((seed[0] & MSB_BYTE_MASK) >> 7);
 
         int numTotalBits = 8 * seed.Length;  // 8 bits times number of bytes
@@ -66,13 +66,17 @@ class Program {
 
         seed[seed.Length - 1] |= (byte)(newBit >> 7); // set LSB to new bit 
 
-        foreach (byte b in seed) {
-            Console.Write(ByteToString(b));
+        if (shouldWrite) {
+            foreach (byte b in seed) {
+                Console.Write(ByteToString(b));
+            }
+
+            Console.Write(" " + newBit);
+
+            Console.WriteLine();
         }
-
-        Console.Write(" " + newBit);
-
-        Console.WriteLine();
+        
+        
 
         return (seed, newBit); 
 }
@@ -267,6 +271,65 @@ class Program {
         Console.WriteLine(newPlainText);
     }
 
+    // Add this method to your Program class:
+    public static void RunTripleBit(string[] args) {
+        if (args.Length != 5) {
+            Console.WriteLine("Error in the length of your arguments.");
+            DisplayHelp();
+            return;
+        }
+
+        // Parse the initial seed and convert it to a byte array
+        string seedString = args[1];
+        int seedLength = seedString.Length;
+        byte[] seedBytes = BinaryStringToBytes(seedString);
+
+        int tap, step, iteration;
+        try {
+            tap = Convert.ToInt32(args[2]);
+        }
+        catch {
+            Console.WriteLine("Error in converting the tap to an integer.");
+            DisplayHelp();
+            return;
+        }
+        try {
+            step = Convert.ToInt32(args[3]);
+        }
+        catch {
+            Console.WriteLine("Error in converting the step to an integer.");
+            DisplayHelp();
+            return;
+        }
+        try {
+            iteration = Convert.ToInt32(args[4]);
+        }
+        catch {
+            Console.WriteLine("Error in converting the iteration to an integer.");
+            DisplayHelp();
+            return;
+        }
+
+        if (tap < 1 || tap > seedLength) {
+            Console.WriteLine("The tap must be within [1.." + seedLength + "]");
+            DisplayHelp();
+            return;
+        }
+
+        Console.WriteLine(seedString + " - initial seed");
+
+        for (int i = 0; i < iteration; i++) {
+            int accumulated = 1; 
+            for (int j = 0; j < step; j++) {
+                var (newSeed, newBit) = SimulateOneStepLFSR(seedBytes, tap, false);
+                seedBytes = newSeed;
+                accumulated = accumulated * 3 + newBit;
+            }
+            string finalSeedBinary = BytesToBinaryString(seedBytes);
+            Console.WriteLine(finalSeedBinary + " " + accumulated);
+        }
+    }
+
     public static void RunCipher(string[] args) {
         if (args.Length != 3) {
             Console.WriteLine("Error in the length of your arguments.");
@@ -331,6 +394,9 @@ class Program {
         }
         else if (option == "decrypt") {
             RunDecrypt(args);
+        }
+        else if (option == "triplebit") {  // Added triplebit option for our new feature!
+            RunTripleBit(args);
         }
         else {
             Console.WriteLine("Invalid Command!");
