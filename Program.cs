@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using SkiaSharp;
 
 class Program {
     private const byte MSB_BYTE_MASK =  0b10000000;
@@ -39,7 +40,7 @@ class Program {
 
     // Performs one step of the LFSR function 
     // Returns the new seed and the new bit as a tuple after execution 
-    public static (byte[], int) SimulateOneStepLFSR(byte[] seed, int tap, bool shouldWrite = true) {
+    public static (byte[], byte) SimulateOneStepLFSR(byte[] seed, int tap, bool shouldWrite = true) {
         byte leftmostBit = (byte)((seed[0] & MSB_BYTE_MASK) >> 7);
 
         int numTotalBits = 8 * seed.Length;  // 8 bits times number of bytes
@@ -76,10 +77,156 @@ class Program {
             Console.WriteLine();
         }
         
-        
-
         return (seed, newBit); 
-}
+    }
+
+    public static void RunEncryptImage(string[] args) {
+        if (args.Length != 4) {
+            Console.WriteLine("Error in the length of your arguments.");
+            DisplayHelp();
+            return; 
+        }
+
+        string imageFile = args[1];
+        string seed = args[2];
+        int tap = Convert.ToInt32(args[3]);
+
+        byte[] seedBytes = BinaryStringToBytes(seed);
+
+        var (newSeed, _) = SimulateOneStepLFSR(seedBytes, tap, false);
+
+        string imagePath = Path.Combine(Directory.GetCurrentDirectory(), imageFile);
+        SKBitmap bitmap;
+
+        using (FileStream fs = new FileStream(imagePath, FileMode.Open)) {
+            bitmap = SKBitmap.Decode(fs);
+        }
+
+        System.Console.WriteLine("Encrypting image " + imagePath + "...");
+
+        for (int x = 0; x < bitmap.Width; x++) {
+            for (int y = 0; y < bitmap.Height; y++) {
+                string randomRedIntString = "";
+                string randomGreenIntString = "";
+                string randomBlueIntString = "";
+
+                for (int i = 0; i < 8; i++) {
+                    var (newRedByte, newRedBit) = SimulateOneStepLFSR(newSeed, tap, false);
+                    newSeed = newRedByte;
+                    randomRedIntString += newRedBit;
+
+                    var (newGreenByte, newGreenBit) = SimulateOneStepLFSR(newSeed, tap, false);
+                    newSeed = newGreenByte;
+                    randomGreenIntString += newGreenBit;
+
+                    var (newBlueByte, newBlueBit) = SimulateOneStepLFSR(newSeed, tap, false);
+                    newSeed = newBlueByte;
+                    randomBlueIntString += newBlueBit;
+                }
+
+                int randomRedInt = Convert.ToInt32(randomRedIntString);
+                int randomGreenInt = Convert.ToInt32(randomGreenIntString);
+                int randomBlueInt = Convert.ToInt32(randomBlueIntString);
+
+                SKColor pixelColor = bitmap.GetPixel(x, y);
+                byte redColor = pixelColor.Red;
+                byte blueColor = pixelColor.Blue;
+                byte greenColor = pixelColor.Green;
+
+                byte newRedColor = (byte)(redColor ^ randomRedInt);
+                byte newGreenColor = (byte)(greenColor ^ randomGreenInt);
+                byte newBlueColor = (byte)(blueColor ^ randomBlueInt);
+
+                SKColor newPixelColor = new SKColor(newRedColor, newGreenColor, newBlueColor);
+                bitmap.SetPixel(x, y, newPixelColor);
+            }
+        }
+
+        string imageFileWithoutExtension = Path.GetFileNameWithoutExtension(imageFile);
+        string newImagePath = Path.Combine(Directory.GetCurrentDirectory(), imageFileWithoutExtension + "ENCRYPTED" + Path.GetExtension(imageFile));
+        
+        SKImage skImage = SKImage.FromBitmap(bitmap);
+        SKData encodedData = skImage.Encode(SKEncodedImageFormat.Png, 100);
+        using (FileStream outFile = File.OpenWrite(newImagePath)) {
+            encodedData.SaveTo(outFile);
+        }
+
+        System.Console.WriteLine("Encryption complete.");
+    }
+
+    public static void RunDecryptImage(string[] args) {
+        if (args.Length != 4) {
+            Console.WriteLine("Error in the length of your arguments.");
+            DisplayHelp();
+            return; 
+        }
+
+        string imageFile = args[1];
+        string seed = args[2];
+        int tap = Convert.ToInt32(args[3]);
+
+        byte[] seedBytes = BinaryStringToBytes(seed);
+
+        var (newSeed, _) = SimulateOneStepLFSR(seedBytes, tap, false);
+
+        string imagePath = Path.Combine(Directory.GetCurrentDirectory(), imageFile);
+        SKBitmap bitmap;
+
+        using (FileStream fs = new FileStream(imagePath, FileMode.Open)) {
+            bitmap = SKBitmap.Decode(fs);
+        }
+
+        System.Console.WriteLine("Encrypting image " + imagePath + "...");
+
+        for (int x = 0; x < bitmap.Width; x++) {
+            for (int y = 0; y < bitmap.Height; y++) {
+                string randomRedIntString = "";
+                string randomGreenIntString = "";
+                string randomBlueIntString = "";
+
+                for (int i = 0; i < 8; i++) {
+                    var (newRedByte, newRedBit) = SimulateOneStepLFSR(newSeed, tap, false);
+                    newSeed = newRedByte;
+                    randomRedIntString += newRedBit;
+
+                    var (newGreenByte, newGreenBit) = SimulateOneStepLFSR(newSeed, tap, false);
+                    newSeed = newGreenByte;
+                    randomGreenIntString += newGreenBit;
+
+                    var (newBlueByte, newBlueBit) = SimulateOneStepLFSR(newSeed, tap, false);
+                    newSeed = newBlueByte;
+                    randomBlueIntString += newBlueBit;
+                }
+
+                int randomRedInt = Convert.ToInt32(randomRedIntString);
+                int randomGreenInt = Convert.ToInt32(randomGreenIntString);
+                int randomBlueInt = Convert.ToInt32(randomBlueIntString);
+
+                SKColor pixelColor = bitmap.GetPixel(x, y);
+                byte redColor = pixelColor.Red;
+                byte blueColor = pixelColor.Blue;
+                byte greenColor = pixelColor.Green;
+
+                byte newRedColor = (byte)(redColor ^ randomRedInt);
+                byte newGreenColor = (byte)(greenColor ^ randomGreenInt);
+                byte newBlueColor = (byte)(blueColor ^ randomBlueInt);
+
+                SKColor newPixelColor = new SKColor(newRedColor, newGreenColor, newBlueColor);
+                bitmap.SetPixel(x, y, newPixelColor);
+            }
+        }
+
+        string imageFileWithoutExtension = Path.GetFileNameWithoutExtension(imageFile);
+        string newImagePath = Path.Combine(Directory.GetCurrentDirectory(), imageFileWithoutExtension + "ENCRYPTED" + Path.GetExtension(imageFile));
+        
+        SKImage skImage = SKImage.FromBitmap(bitmap);
+        SKData encodedData = skImage.Encode(SKEncodedImageFormat.Png, 100);
+        using (FileStream outFile = File.OpenWrite(newImagePath)) {
+            encodedData.SaveTo(outFile);
+        }
+
+        System.Console.WriteLine("Encryption complete.");
+    }
 
     public static void RunKeystream(string[] args) {
         if (args.Length != 4) {
@@ -192,12 +339,6 @@ class Program {
             newCipherText += ByteToString(plainTextBytes[i]);
         }
 
-        // at this point, the bytetostring function has added leading zeroes 
-
-        newCipherText = newCipherText.TrimStart('0');
-
-        // 0s removed 
-
         Console.WriteLine(newCipherText);
     }
 
@@ -264,14 +405,15 @@ class Program {
 
         // at this point, the bytetostring function has added leading zeroes 
 
-        newPlainText = newPlainText.TrimStart('0');
+        //newPlainText = newPlainText.TrimStart('0');
 
-        // 0s removed 
+        // 0s removed (nvm - important notes stuff says dont do that)
+        // this will cause the output to not match the expected one but ig
+        // thats ok
 
         Console.WriteLine(newPlainText);
     }
 
-    // Add this method to your Program class:
     public static void RunTripleBit(string[] args) {
         if (args.Length != 5) {
             Console.WriteLine("Error in the length of your arguments.");
@@ -279,7 +421,6 @@ class Program {
             return;
         }
 
-        // Parse the initial seed and convert it to a byte array
         string seedString = args[1];
         int seedLength = seedString.Length;
         byte[] seedBytes = BinaryStringToBytes(seedString);
@@ -397,6 +538,9 @@ class Program {
         }
         else if (option == "triplebit") {  
             RunTripleBit(args);
+        }
+        else if (option == "encryptimage") {
+            RunEncryptImage(args);
         }
         else {
             Console.WriteLine("Invalid Command!");
