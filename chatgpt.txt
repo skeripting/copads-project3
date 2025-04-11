@@ -1,0 +1,27 @@
+ChatGPT wrote this:
+
+byte leftmostBit = (byte)((seed[0] & MSB_BYTE_MASK) >> 7);
+
+int numTotalBits = 8 * seed.Length;  // 8 bits times number of bytes
+
+int bitIndexFromRight = numTotalBits - tap;  
+int byteIndex = bitIndexFromRight / 8;
+int bitOffset = bitIndexFromRight % 8;
+
+byte tapBit = (byte)((seed[byteIndex] >> (7 - bitOffset)) & 1);
+
+byte newBit = (byte)(leftmostBit ^ tapBit);
+
+int carry = newBit;
+
+for (int i = seed.Length - 1; i >= 0; i--) {
+    int nextCarry = (seed[i] & MSB_BYTE_MASK) >> 7; 
+    seed[i] <<= 1; 
+    seed[i] |= (byte)carry; 
+    carry = nextCarry;
+}
+
+i found it difficult to do the math for the tap bit and initial XOR operation
+from chatGPT, I learned to do the carat sign and to cast to byte to make it work
+
+I was also confused with the for loop for the carries, which chat gpt helped with.

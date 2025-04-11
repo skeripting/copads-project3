@@ -1,23 +1,30 @@
 ﻿using System.Text;
 using SkiaSharp;
 
+// Program class. Handles the entire project 3.
 class Program {
+    // This is basically a mask where the first bit is 1
     private const byte MSB_BYTE_MASK =  0b10000000;
+
+    // Convert a byte into a string
     public static string ByteToString(byte b) {
         return Convert.ToString(b, 2).PadLeft(8, '0');
     }
 
+    // Convert multiple bytes to string
     public static string BytesToBinaryString(byte[] bytes)
     {
         StringBuilder binaryString = new StringBuilder();
 
         foreach (byte b in bytes)
         {
-            binaryString.Append(Convert.ToString(b, 2).PadLeft(8, '0'));
+            binaryString.Append(ByteToString(b));
         }
 
         return binaryString.ToString();
     }
+
+    // Convert a string into bytes
     public static byte[] BinaryStringToBytes(string binary)
     {
         int remainder = binary.Length % 8;
@@ -41,9 +48,12 @@ class Program {
     // Performs one step of the LFSR function 
     // Returns the new seed and the new bit as a tuple after execution 
     public static (byte[], byte) SimulateOneStepLFSR(byte[] seed, int tap, bool shouldWrite = true) {
+        
         byte leftmostBit = (byte)((seed[0] & MSB_BYTE_MASK) >> 7);
 
         int numTotalBits = 8 * seed.Length;  // 8 bits times number of bytes
+
+        // ChatGPT wrote everything below this line
 
         int bitIndexFromRight = numTotalBits - tap;  
         int byteIndex = bitIndexFromRight / 8;
@@ -62,6 +72,8 @@ class Program {
             carry = nextCarry;
         }
 
+        // ChatGPT wrote all the way to this line. Everything else is my code.
+        
         // at this point, the seed is new
         // last step is to make the XORed thingy (new bit) the LSB 
 
@@ -80,6 +92,7 @@ class Program {
         return (seed, newBit); 
     }
 
+    // Encrypts an image
     public static void RunEncryptImage(string[] args) {
         if (args.Length != 4) {
             Console.WriteLine("Error in the length of your arguments.");
@@ -87,9 +100,36 @@ class Program {
             return; 
         }
 
-        string imageFile = args[1];
-        string seed = args[2];
-        int tap = Convert.ToInt32(args[3]);
+        string imageFile; 
+        string seed; 
+        int tap;
+
+        try {
+            imageFile = args[1];
+        }
+        catch {
+            Console.WriteLine("Error in converting the image file into a string");
+            DisplayHelp();
+            return; 
+        }
+
+        try {
+            seed = args[2];
+        }
+        catch {
+            Console.WriteLine("Error in converting the seed into a string");
+            DisplayHelp();
+            return; 
+        }
+
+        try {
+            tap = Convert.ToInt32(args[3]);
+        }
+        catch {
+            Console.WriteLine("Error in converting the tap into an int");
+            DisplayHelp();
+            return; 
+        }
 
         byte[] seedBytes = BinaryStringToBytes(seed);
 
@@ -124,11 +164,12 @@ class Program {
                     randomBlueIntString += newBlueBit;
                 }
 
-                int randomRedInt = Convert.ToInt32(randomRedIntString);
-                int randomGreenInt = Convert.ToInt32(randomGreenIntString);
-                int randomBlueInt = Convert.ToInt32(randomBlueIntString);
+                int randomRedInt = Convert.ToInt32(randomRedIntString, 2);
+                int randomGreenInt = Convert.ToInt32(randomGreenIntString, 2);
+                int randomBlueInt = Convert.ToInt32(randomBlueIntString, 2);
 
                 SKColor pixelColor = bitmap.GetPixel(x, y);
+
                 byte redColor = pixelColor.Red;
                 byte blueColor = pixelColor.Blue;
                 byte greenColor = pixelColor.Green;
@@ -154,6 +195,7 @@ class Program {
         System.Console.WriteLine("Encryption complete.");
     }
 
+    // Decrypts the encrypted image from the previous method
     public static void RunDecryptImage(string[] args) {
         if (args.Length != 4) {
             Console.WriteLine("Error in the length of your arguments.");
@@ -161,9 +203,36 @@ class Program {
             return; 
         }
 
-        string imageFile = args[1];
-        string seed = args[2];
-        int tap = Convert.ToInt32(args[3]);
+        string imageFile; 
+        string seed; 
+        int tap;
+
+        try {
+            imageFile = args[1];
+        }
+        catch {
+            Console.WriteLine("Error in converting the image file into a string");
+            DisplayHelp();
+            return; 
+        }
+
+        try {
+            seed = args[2];
+        }
+        catch {
+            Console.WriteLine("Error in converting the seed into a string");
+            DisplayHelp();
+            return; 
+        }
+
+        try {
+            tap = Convert.ToInt32(args[3]);
+        }
+        catch {
+            Console.WriteLine("Error in converting the tap into an int");
+            DisplayHelp();
+            return; 
+        }
 
         byte[] seedBytes = BinaryStringToBytes(seed);
 
@@ -176,14 +245,14 @@ class Program {
             bitmap = SKBitmap.Decode(fs);
         }
 
-        System.Console.WriteLine("Encrypting image " + imagePath + "...");
+        Console.WriteLine("Decrypting image " + imagePath + "...");
 
         for (int x = 0; x < bitmap.Width; x++) {
             for (int y = 0; y < bitmap.Height; y++) {
                 string randomRedIntString = "";
                 string randomGreenIntString = "";
                 string randomBlueIntString = "";
-
+                
                 for (int i = 0; i < 8; i++) {
                     var (newRedByte, newRedBit) = SimulateOneStepLFSR(newSeed, tap, false);
                     newSeed = newRedByte;
@@ -198,9 +267,9 @@ class Program {
                     randomBlueIntString += newBlueBit;
                 }
 
-                int randomRedInt = Convert.ToInt32(randomRedIntString);
-                int randomGreenInt = Convert.ToInt32(randomGreenIntString);
-                int randomBlueInt = Convert.ToInt32(randomBlueIntString);
+                int randomRedInt = Convert.ToInt32(randomRedIntString, 2);
+                int randomGreenInt = Convert.ToInt32(randomGreenIntString, 2);
+                int randomBlueInt = Convert.ToInt32(randomBlueIntString, 2);
 
                 SKColor pixelColor = bitmap.GetPixel(x, y);
                 byte redColor = pixelColor.Red;
@@ -217,7 +286,7 @@ class Program {
         }
 
         string imageFileWithoutExtension = Path.GetFileNameWithoutExtension(imageFile);
-        string newImagePath = Path.Combine(Directory.GetCurrentDirectory(), imageFileWithoutExtension + "ENCRYPTED" + Path.GetExtension(imageFile));
+        string newImagePath = Path.Combine(Directory.GetCurrentDirectory(), imageFileWithoutExtension.Replace("ENCRYPTED", "") + "NEW" + Path.GetExtension(imageFile));
         
         SKImage skImage = SKImage.FromBitmap(bitmap);
         SKData encodedData = skImage.Encode(SKEncodedImageFormat.Png, 100);
@@ -225,9 +294,10 @@ class Program {
             encodedData.SaveTo(outFile);
         }
 
-        System.Console.WriteLine("Encryption complete.");
+        System.Console.WriteLine("Decryption complete.");
     }
 
+    // Runs the keystream command
     public static void RunKeystream(string[] args) {
         if (args.Length != 4) {
             Console.WriteLine("Error in the length of your arguments.");
@@ -285,6 +355,7 @@ class Program {
 
     }
 
+    // Runs the encrypt ocmmand
     public static void RunEncrypt(string[] args) {
         string plaintext = args[1];
 
@@ -321,11 +392,6 @@ class Program {
         byte[] keystreamBytes = BinaryStringToBytes(keyStream);
         byte[] plainTextBytes = BinaryStringToBytes(plaintext);
 
-        /*Console.WriteLine("Keystream: " + BytesToBinaryString(keystreamBytes));
-        Console.WriteLine("Plain Text: " + BytesToBinaryString(plainTextBytes));
-        Console.WriteLine("Number of bytes in Keystream: " + keystreamBytes.Length);
-        Console.WriteLine("Number of bytes in Plain Text: " + plainTextBytes.Length);*/
-
         // now finally they should be the same length *rolls eyes*; xor 
 
         for (int i = 0; i < keystreamBytes.Length; i++) {
@@ -343,6 +409,7 @@ class Program {
     }
 
 
+    // Runs the decrypt command
     public static void RunDecrypt(string[] args) {
         string ciphertext = args[1];
 
@@ -381,11 +448,6 @@ class Program {
 
         // cipher text bytes should be same size as keystream bytes now
         byte[] plainTextBytes = new byte[keystreamBytes.Length]; 
-
-        /*Console.WriteLine("Keystream: " + keyStream);
-        Console.WriteLine("Cipher Text: " + ciphertext);
-        Console.WriteLine("Number of bytes in Keystream: " + keystreamBytes.Length);
-        Console.WriteLine("Number of bytes in Cipher Text: " + cipherTextBytes.Length);*/
 
         // now finally they should be the same length *rolls eyes*; xor 
 
@@ -457,7 +519,7 @@ class Program {
             return;
         }
 
-        Console.WriteLine(seedString + " - initial seed");
+        Console.WriteLine(seedString + " - seed");
 
         for (int i = 0; i < iteration; i++) {
             int accumulated = 1; 
@@ -523,29 +585,39 @@ class Program {
         }
 
         string option = args[0];
-
-        if (option == "cipher") {
-            RunCipher(args);
+        
+        try {
+            if (option.ToLower() == "cipher") {
+                RunCipher(args);
+            }
+            else if (option.ToLower() == "generatekeystream") {
+                RunKeystream(args);
+            }
+            else if (option.ToLower() == "encrypt") {
+                RunEncrypt(args);
+            }
+            else if (option.ToLower() == "decrypt") {
+                RunDecrypt(args);
+            }
+            else if (option.ToLower() == "triplebit" || option.ToLower() == "triplebits") {  
+                RunTripleBit(args);
+            }
+            else if (option.ToLower() == "encryptimage") {
+                RunEncryptImage(args);
+            }
+            else if (option.ToLower() == "decryptimage") {
+                RunDecryptImage(args);
+            }
+            else {
+                Console.WriteLine("Invalid Command!");
+                DisplayHelp();
+                return;
+            }
         }
-        else if (option == "generatekeystream") {
-            RunKeystream(args);
-        }
-        else if (option == "encrypt") {
-            RunEncrypt(args);
-        }
-        else if (option == "decrypt") {
-            RunDecrypt(args);
-        }
-        else if (option == "triplebit") {  
-            RunTripleBit(args);
-        }
-        else if (option == "encryptimage") {
-            RunEncryptImage(args);
-        }
-        else {
-            Console.WriteLine("Invalid Command!");
+        catch {
+            Console.WriteLine("An error occurred in the process of running your command.");
+            Console.WriteLine("Please double check your arugments and make sure that the order and formatting is correct.");
             DisplayHelp();
-            return;
         }
     }
 }
